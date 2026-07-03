@@ -4,8 +4,9 @@
 
 import frappe
 from frappe import _
-from frappe.query_builder import Case
-from frappe.query_builder.functions import Count, CurDate, DateDiff, Max, Sum
+from frappe.query_builder import Case, CustomFunction
+from frappe.query_builder.functions import Count, Max, Sum
+from pypika.terms import Arithmetic, ArithmeticExpression, PseudoColumn
 from frappe.utils import cint
 
 
@@ -52,9 +53,18 @@ def get_sales_details(doctype):
 		date_col = sales_doctype.posting_date
 
 	last_order_date = Max(date_col)
-	# DateDiff is cross-database (DATEDIFF on MariaDB, date subtraction on postgres); CurDate()
-	# renders the bare CURRENT_DATE keyword. Yields the integer number of days.
-	days_since_last_order = DateDiff(CurDate(), last_order_date)
+	current_date = PseudoColumn("CURRENT_DATE")
+	if frappe.db.db_type == "postgres":
+		days_since_last_order = ArithmeticExpression(
+			operator=Arithmetic.sub,
+			left=current_date,
+			right=last_order_date,
+		)
+	else:
+		days_since_last_order = CustomFunction("DATEDIFF", ["date1", "date2"])(
+			current_date,
+			last_order_date,
+		)
 
 	return (
 		frappe.qb.from_(customer)
