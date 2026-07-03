@@ -76,7 +76,6 @@ def get_item_warehouse_quantity_map():
 		.inner_join(pb)
 		.on(pbi.parent == pb.name)
 		.select(pb.new_item_code.as_("parent"), pbi.item_code, pbi.qty)
-		.where((pb.is_active == 1) & (pb.docstatus == 1))
 		.run(as_dict=True)
 	)
 
